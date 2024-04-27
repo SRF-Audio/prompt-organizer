@@ -3,18 +3,19 @@ import sys
 import argparse
 from datetime import datetime
 
-# Define the top-level path as a constant
-TOP_LEVEL_PATH = os.path.expanduser('~/GitLab/nexgen/')
+# Define the path for the outputs directory
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUTS_DIR = os.path.join(SCRIPT_DIR, 'outputs')
 
 def ensure_outputs_dir():
-    """Ensure the 'outputs' directory exists."""
-    if not os.path.exists('outputs'):
-        os.mkdir('outputs')
+    """Ensure the 'outputs' directory exists next to the script's directory."""
+    if not os.path.exists(OUTPUTS_DIR):
+        os.makedirs(OUTPUTS_DIR)
 
 def create_aggregate_file():
     """Create a new .txt file in 'outputs' with a timestamp."""
     timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    filename = f'outputs/gpt-prompt-code-{timestamp}.txt'
+    filename = os.path.join(OUTPUTS_DIR, f'gpt-prompt-code-{timestamp}.txt')
     return filename
 
 def is_valid_file_extension(filename):
@@ -27,65 +28,38 @@ def get_files_from_directory(directory_path):
     for root, _, files in os.walk(directory_path):
         for file in files:
             if is_valid_file_extension(file):
-                # Construct the path relative to the TOP_LEVEL_PATH
-                full_path = os.path.join(root, file)
-                yield os.path.relpath(full_path, TOP_LEVEL_PATH)
+                yield os.path.join(root, file)
 
 def aggregate_contents(paths, output_file):
     """Aggregate the contents of given files into the output file, only if they have valid extensions."""
     with open(output_file, 'w') as outfile:
-        for relative_path in paths:
-            if not is_valid_file_extension(relative_path):
-                print(f"Skipping non-code file: {relative_path}")
+        for path in paths:
+            if not is_valid_file_extension(path):
+                print(f"Skipping non-code file: {path}")
                 continue
-            
-            absolute_path = os.path.join(TOP_LEVEL_PATH, relative_path)
+
             try:
-                with open(absolute_path, 'r') as infile:
-                    outfile.write(f'~/{relative_path}:\n```\n{infile.read()}\n```\n\n')
+                with open(path, 'r') as infile:
+                    outfile.write(f'{path}:\n```\n{infile.read()}\n```\n\n')
             except UnicodeDecodeError:
-                print(f"Error reading file (possible binary): {relative_path}")
+                print(f"Error reading file (possible binary): {path}")
             except Exception as e:
-                print(f"Error processing file {relative_path}: {e}")
-
-def print_usage():
-    """Prints usage instructions."""
-    usage_text = """
-    This script aggregates the contents of code files into a single .txt file for use during LLM prompts.
-
-    Usage:
-      python script.py -d <relative_path_to_directory> : Aggregate all files in the given directory, relative to ~/GitLab/nexgen/.
-      python script.py -f <relative_file1> <relative_file2> ... : Aggregate a list of specified files, relative to ~/GitLab/nexgen/.
-
-    Options:
-      -d --directory : Specify a directory to aggregate all its files, providing a relative path.
-      -f --files     : Specify individual file paths to aggregate, providing relative paths.
-      
-    Note: This script assumes all paths are relative to the ~/GitLab/nexgen/ directory, 
-    so that you can use VS Code's "Copy Relative Path" command. Files not matching the code-related extensions (.py, .js, .jsx, .html, .css, .go, .yaml, .yml, .sh) will be skipped.
-    """
-    print(usage_text)
+                print(f"Error processing file {path}: {e}")
 
 def main():
-    if len(sys.argv) == 1:
-        print_usage()
-        sys.exit(1)
-
-    parser = argparse.ArgumentParser(description='Aggregate code files into a single .txt file.', usage=argparse.SUPPRESS)
-    parser.add_argument('-d', '--directory', type=str, help='Directory containing the files to aggregate')
-    parser.add_argument('-f', '--files', nargs='+', help='A list of file paths to aggregate')
+    parser = argparse.ArgumentParser(description='Aggregate code files into a single .txt file for use during LLM prompts.')
+    parser.add_argument('-d', '--directory', action='append', type=str, help='Specify directories containing the files to aggregate. Paths must be absolute. Multiple directories can be specified.')
+    parser.add_argument('-f', '--files', nargs='+', action='append', help='Specify individual file paths to aggregate. Paths must be absolute. Multiple file sets can be specified.')
     
     args = parser.parse_args()
     
     file_paths = []
     if args.directory:
-        directory_path = os.path.join(TOP_LEVEL_PATH, args.directory)
-        file_paths.extend(get_files_from_directory(directory_path))
-    elif args.files:
-        file_paths.extend(args.files)
-    else:
-        print_usage()
-        sys.exit(1)
+        for directory in args.directory:
+            file_paths.extend(get_files_from_directory(directory))
+    if args.files:
+        for files_list in args.files:
+            file_paths.extend(files_list)
     
     ensure_outputs_dir()
     output_file = create_aggregate_file()
