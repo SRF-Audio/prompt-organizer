@@ -38,6 +38,11 @@ Flags can be combined:
 - `python prompt-organizer.py -d <path_to_my_directory_1> -d <path_to_my_directory_2>`
 - `python prompt-organizer.py -d <path_to_my_directory> -f <path_to_my_file_1> -f <path_to_my_file_2>`
 
+This script can be triggered from any location in your terminal, so you can pass the `.` argument:
+- Suppose you are in `~/GitHub/my-project`, and you need all the files in your current directory to be in the prompt
+- the script lives in `~GitHub/prompt-organizer`
+- run `python ../prompt-organizer/prompt-organizer.py -d .`
+
 By default, the script outputs results directly to the console, with the intent being to pipe it directly into your clipboard, like so:
 
 ### Windows PowerShell
@@ -47,10 +52,7 @@ By default, the script outputs results directly to the console, with the intent 
 ### Linux
 `python prompt-organizer.py -d <path_to_my_directory> | xclip -selection clipboard`
 
-This script can be triggered from any location in your terminal, so you can pass the `.` argument:
-- Suppose you are in `~/GitHub/my-project`, and you need all the files in your current directory to be in the prompt
-- the script lives in `~GitHub/prompt-organizer`
-- run `python ../prompt-organizer/prompt-organizer.py -d .`
+
 
 ### Options
 Run `python prompt-organizer.py -h` for the full list of help options.
