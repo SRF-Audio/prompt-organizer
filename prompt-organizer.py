@@ -1,70 +1,78 @@
 import os
+import sys
 import argparse
 from datetime import datetime
-
-# Define the path for the outputs directory
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUTS_DIR = os.path.join(SCRIPT_DIR, 'outputs')
-
-def ensure_outputs_dir():
-    """Ensure the 'outputs' directory exists next to the script's directory."""
-    if not os.path.exists(OUTPUTS_DIR):
-        os.makedirs(OUTPUTS_DIR)
-
-def create_aggregate_file():
-    """Create a new .txt file in 'outputs' with a timestamp."""
-    timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    filename = os.path.join(OUTPUTS_DIR, f'gpt-prompt-code-{timestamp}.txt')
-    return filename
 
 def is_valid_file_extension(filename):
     """Check if the file has a valid text-based extension."""
     valid_extensions = ['.py', '.js', '.jsx', '.html', '.css', '.go', '.yaml', '.yml', '.sh', '.tf', '.tfvars']
     return any(filename.endswith(ext) for ext in valid_extensions)
 
-def get_files_from_directory(directory_path):
-    """Recursively collect all valid files from the given directory."""
-    for root, _, files in os.walk(directory_path):
+def is_hidden(filepath):
+    """Check if the file or directory is hidden."""
+    return any(part.startswith('.') for part in filepath.split(os.sep))
+
+def get_files_from_directory(directory_path, include_hidden):
+    """Recursively collect all valid files from the given directory, excluding hidden files unless specified."""
+    for root, dirs, files in os.walk(directory_path):
+        if not include_hidden:
+            files = [f for f in files if not f.startswith('.')]
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
         for file in files:
             if is_valid_file_extension(file):
                 yield os.path.join(root, file)
 
-def aggregate_contents(paths, output_file):
-    """Aggregate the contents of given files into the output file, only if they have valid extensions."""
-    with open(output_file, 'w') as outfile:
+def aggregate_contents(paths, outfile, is_output_file):
+    """Aggregate the contents of given files and output to a file or print to console."""
+    out = open(outfile, 'w') if is_output_file else sys.stdout
+    try:
         for path in paths:
             if not is_valid_file_extension(path):
-                print(f"Skipping non-code file: {path}")
                 continue
-
             try:
                 with open(path, 'r') as infile:
-                    outfile.write(f'{path}:\n```\n{infile.read()}\n```\n\n')
-            except UnicodeDecodeError:
-                print(f"Error reading file (possible binary): {path}")
+                    content = infile.read()
+                    out.write(f'{path}:\n```\n{content}\n```\n\n')
             except Exception as e:
-                print(f"Error processing file {path}: {e}")
+                print(f"Error processing file {path}: {e}", file=sys.stderr)
+    finally:
+        if is_output_file:
+            out.close()
 
 def main():
-    parser = argparse.ArgumentParser(description='Aggregate code files into a single .txt file for use during LLM prompts.')
-    parser.add_argument('-d', '--directory', action='append', type=str, help='Specify directories containing the files to aggregate. Paths must be absolute. Multiple directories can be specified.')
-    parser.add_argument('-f', '--files', nargs='+', action='append', help='Specify individual file paths to aggregate. Paths must be absolute. Multiple file sets can be specified.')
-    
+    parser = argparse.ArgumentParser(description='Aggregate code files into a single output. Outputs to console by default, or to a file if specified.')
+    parser.add_argument('-o', '--output', action='store_true', help='Write output to a file in the outputs directory instead of the console.')
+    parser.add_argument('-d', '--directory', action='append', type=str, help='Directory paths to aggregate files from. Handles both absolute and relative paths.')
+    parser.add_argument('-f', '--files', nargs='+', action='append', help='Individual file paths to aggregate. Handles both absolute and relative paths.')
+    parser.add_argument('-h', '--include-hidden', action='store_true', help='Include hidden files and directories in the aggregation.')
+
     args = parser.parse_args()
-    
+
+    # Outputs directory setup
+    if args.output:
+        outputs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'outputs')
+        if not os.path.exists(outputs_dir):
+            os.makedirs(outputs_dir)
+        timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        output_file = os.path.join(outputs_dir, f'gpt-prompt-code-{timestamp}.txt')
+    else:
+        output_file = None
+
     file_paths = []
     if args.directory:
         for directory in args.directory:
-            file_paths.extend(get_files_from_directory(directory))
+            directory = os.path.abspath(directory)  # Convert to absolute if not already
+            file_paths.extend(get_files_from_directory(directory, args.include_hidden))
     if args.files:
         for files_list in args.files:
-            file_paths.extend(files_list)
-    
-    ensure_outputs_dir()
-    output_file = create_aggregate_file()
-    aggregate_contents(file_paths, output_file)
+            for file in files_list:
+                file = os.path.abspath(file)  # Convert to absolute if not already
+                if os.path.exists(file) and is_valid_file_extension(file):
+                    file_paths.append(file)
+                else:
+                    print(f"Error: File does not exist or is not a valid code file: {file}", file=sys.stderr)
 
-    print(f'Aggregated content written to {output_file}')
+    aggregate_contents(file_paths, output_file, args.output)
 
 if __name__ == '__main__':
     main()
