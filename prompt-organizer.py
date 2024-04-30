@@ -44,7 +44,7 @@ def main():
     parser.add_argument('-o', '--output', action='store_true', help='Write output to a file in the outputs directory instead of the console.')
     parser.add_argument('-d', '--directory', action='append', type=str, help='Directory paths to aggregate files from. Handles both absolute and relative paths.')
     parser.add_argument('-f', '--files', nargs='+', action='append', help='Individual file paths to aggregate. Handles both absolute and relative paths.')
-    parser.add_argument('-h', '--include-hidden', action='store_true', help='Include hidden files and directories in the aggregation.')
+    parser.add_argument('-s', '--show-hidden', action='store_true', help='Include hidden files and directories in the aggregation.')
 
     args = parser.parse_args()
 
@@ -62,7 +62,7 @@ def main():
     if args.directory:
         for directory in args.directory:
             directory = os.path.abspath(directory)  # Convert to absolute if not already
-            file_paths.extend(get_files_from_directory(directory, args.include_hidden))
+            file_paths.extend(get_files_from_directory(directory, args.show_hidden))
     if args.files:
         for files_list in args.files:
             for file in files_list:
