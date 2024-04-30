@@ -7,10 +7,15 @@ Often, when you are using an LLM to help with coding, you may have multiple file
 
 But being organized gets really tedious. I often have to manually make a prompts like: 
 
-> Please find the errors in these files:
+> Please help me debug the errors in these files:
+> Error message:
+> ```
+> Some error message.
+> ```
+>
 > <filename 1>
 > ```
-> file 2 contents
+> file 1 contents
 > ```
 > 
 > <filename 2>
