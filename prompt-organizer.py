@@ -5,7 +5,7 @@ from datetime import datetime
 
 def is_valid_file_extension(filename):
     """Check if the file has a valid text-based extension."""
-    valid_extensions = ['.py', '.js', '.jsx', '.html', '.css', '.go', '.yaml', '.yml', '.sh', '.tf', '.tfvars']
+    valid_extensions = ['.py', '.js', '.jsx', '.html', '.css', '.go', '.yaml', '.yml', '.sh', '.tf', '.tfvars', '.tpl']
     return any(filename.endswith(ext) for ext in valid_extensions)
 
 def is_hidden(filepath):
